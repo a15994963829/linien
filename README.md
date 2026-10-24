@@ -26,15 +26,17 @@ npm run build
 
 修改网页文案或交互时编辑根目录四个源码文件。新增或替换产品图片时，需要同步调整素材校验清单与构建素材来源。
 
-## 以后部署到 Netlify 免费方案
+## 已上线的网站
 
-1. 登录 https://app.netlify.com/ ，从 GitHub 导入 `a15994963829/linien`。
-2. 选择 **Free**，生产分支为 `main`，基础目录留空。
-3. 构建命令为 `npm run build`，发布目录为 `dist`；仓库配置已提供这两个值。
-4. 等待构建成功，使用控制台实际分配的 `https://项目名.netlify.app` 地址。
-5. 后续推送到默认分支后，由托管平台重新构建与发布。
+正式网址：https://linien-tableware.netlify.app/
 
-本次仅整理 GitHub，未创建 Netlify 项目、未上线网页。实际域名需要部署成功后才能确定。
+部署控制台：https://app.netlify.com/projects/linien-tableware/overview
+
+2026-10-24 已通过 Netlify Drop 上传全部 380 个网站文件并设为 Public，正式首页、主图和产品列表已检查。账户当前使用 Free 免费方案。
+
+当前发布方式为直接上传，GitHub 更新尚不会自动同步到网站。后续修改后，运行 `npm ci`、`npm run build`，将 `dist/` 内文件打成 ZIP，再上传到上述项目概览中的部署区域即可更新。
+
+若以后连接 GitHub 自动部署，选择本仓库和 `main` 分支，基础目录留空，构建命令 `npm run build`，发布目录 `dist`；仓库已提供相应配置。
 
 ## 免费与大陆访问
 
