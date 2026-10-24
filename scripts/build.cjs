@@ -26,12 +26,25 @@ async function main() {
     if (!files.has(relative)) files.set(relative, fs.readFileSync(path.join(root, 'public', relative)));
     if (blobSha(files.get(relative)) !== sha) throw new Error('Original material mismatch: ' + relative);
   }
+  const assetsRoot = path.join(root, 'public', 'assets');
+  function includeCurrentAssets(directory) {
+    for (const entry of fs.readdirSync(directory, {withFileTypes:true})) {
+      const source = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new Error('Asset symlinks are not supported');
+      if (entry.isDirectory()) includeCurrentAssets(source);
+      else if (/\.(webp|png|jpe?g|svg|avif)$/i.test(entry.name)) {
+        files.set('assets/' + path.relative(assetsRoot, source).split(path.sep).join('/'), fs.readFileSync(source));
+      }
+    }
+  }
+  includeCurrentAssets(assetsRoot);
   // Editable page sources stay in the repository root; the archive supplies original imagery.
   for (const name of ['index.html', 'style.css', 'app.js', 'data.js']) files.set(name, fs.readFileSync(path.join(root, name)));
   new vm.Script(files.get('app.js').toString('utf8'));
   const sandbox = {window:{}};
   vm.runInNewContext(files.get('data.js').toString('utf8'), sandbox);
-  const {products, specs} = sandbox.window.LINIEN;
+  const {products} = sandbox.window.LINIEN;
+  if (new Set(products.map(product => product.id)).size !== products.length) throw new Error('Duplicate product IDs');
   const references = new Set([...files.get('index.html').toString('utf8').matchAll(/(?:src|href)="([^"#]+)"/g)].map(m => m[1]));
   for (const p of products) for (const image of [p.image, ...p.gallery]) references.add(image);
   for (const ref of references) if (!/^(https?:|data:|mailto:|tel:)/.test(ref) && !files.has(ref)) throw new Error('Missing resource: ' + ref);
@@ -41,6 +54,6 @@ async function main() {
     fs.mkdirSync(path.dirname(target), {recursive:true});
     fs.writeFileSync(target, content);
   }
-  console.log(`Built ${files.size} verified website files: ${products.length} product collections and ${specs.length} specifications.`);
+  console.log(`Built ${files.size} website files with ${products.length} product collections; original materials verified.`);
 }
 main().catch(error => {console.error(error.message); process.exitCode = 1;});

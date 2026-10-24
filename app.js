@@ -1,37 +1,164 @@
 'use strict';
-const {products,specs}=window.LINIEN;
-const $=s=>document.querySelector(s);
-const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let saved=[];try{const v=JSON.parse(localStorage.getItem('linien-selection')||'[]');if(Array.isArray(v))saved=v.filter(id=>products.some(p=>p.id===id));}catch{}
-let filter='全部系列',query='',shown=9,specShown=12;
-let toastTimer;
-function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),2300)}
-function persist(){try{localStorage.setItem('linien-selection',JSON.stringify(saved))}catch{}updateSaved()}
-function updateSaved(){$('#list-count').textContent=saved.length;document.querySelectorAll('[data-save]').forEach(b=>{const yes=saved.includes(b.dataset.save);b.setAttribute('aria-pressed',yes);b.setAttribute('aria-label',(yes?'取消收藏':'收藏')+products.find(p=>p.id===b.dataset.save).name);b.textContent=b.classList.contains('save-button')?(yes?'✓':'＋'):(yes?'已加入选品清单 ✓':'加入我的选品 ＋')})}
-function toggleSaved(id){if(saved.includes(id)){saved=saved.filter(x=>x!==id);toast('已从选品清单移除')}else{saved.push(id);toast('已加入选品清单')}persist();if($('#list-dialog').open)renderSelection()}
-function renderProducts(){const list=products.filter(p=>(filter==='全部系列'||p.category===filter)&&(!query||(p.name+p.description+p.category).toLowerCase().includes(query.toLowerCase())));$('#product-grid').innerHTML=list.length?list.slice(0,shown).map(p=>`<article class="product-card"><button class="product-image" data-product="${p.id}" aria-label="查看${escapeHtml(p.name)}系列"><img src="${p.image}" alt="${escapeHtml(p.name)}系列陶瓷餐具" loading="lazy" width="900" height="900"><span class="view-label">探索系列 ↗</span></button><div class="product-caption"><div><small>${p.category}</small><button class="product-name" data-product="${p.id}">${escapeHtml(p.name)}</button></div><button class="save-button" data-save="${p.id}" aria-pressed="false" aria-label="收藏${escapeHtml(p.name)}">＋</button></div><p>${p.description}</p></article>`).join(''):'<div class="empty-state">没有找到相关系列，请尝试其他名称或风格。</div>';$('#catalog-status').textContent=`${filter} · ${list.length} 个系列${list.length>shown?' / 当前展示 '+shown+' 个':''}`;$('#load-more').hidden=shown>=list.length;updateSaved()}
-document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.filter;shown=9;document.querySelectorAll('[data-filter]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});renderProducts()}));
-$('#product-search').addEventListener('input',e=>{query=e.target.value.trim();shown=9;renderProducts()});
-$('#load-more').addEventListener('click',()=>{shown+=9;renderProducts()});
-const productDialog=$('#product-dialog'),listDialog=$('#list-dialog');
-function openProduct(id){const p=products.find(p=>p.id===id);if(!p)return;const hasSpecs=specs.some(s=>s.series===p.name);$('#product-detail').innerHTML=`<div class="detail-main"><div class="detail-gallery"><img class="main-image" src="${p.image}" alt="${escapeHtml(p.name)}系列主图" width="900" height="900" tabindex="0" role="button" aria-label="放大产品图片"><div class="thumbnails" aria-label="产品图片列表">${p.gallery.map((im,i)=>`<button data-gallery="${i}" class="${i===0?'selected':''}" aria-label="查看第${i+1}张图片" aria-pressed="${i===0}"><img src="${im}" alt="${escapeHtml(p.name)}产品图${i+1}" loading="lazy"></button>`).join('')}</div></div><div class="detail-copy"><p class="eyebrow">${p.category} / LINIEN</p><h2 id="detail-title">${escapeHtml(p.name)}</h2><p class="detail-description">${p.description}</p><dl class="detail-facts"><div><dt>材质</dt><dd>陶瓷</dd></div><div><dt>工艺</dt><dd>${p.craft}</dd></div><div><dt>烧制温度</dt><dd>${p.temperature}</dd></div></dl><p class="detail-tip">点击缩略图查看器型与尺寸细节，点击主图可放大阅读。具体使用方式请以各产品说明为准。</p><button class="button dark" data-save="${p.id}" aria-pressed="false">加入我的选品 ＋</button>${hasSpecs?`<button class="text-link" data-spec-link="${escapeHtml(p.name)}">查询本系列规格 ↗</button>`:'<p class="detail-tip">器型及尺寸信息可在产品详情图片中查看。</p>'}</div></div>`;$('#product-detail').dataset.current=id;updateSaved();productDialog.showModal()}
-document.addEventListener('click',e=>{const p=e.target.closest('[data-product]');if(p)openProduct(p.dataset.product);const s=e.target.closest('[data-save]');if(s)toggleSaved(s.dataset.save);const g=e.target.closest('[data-gallery]');if(g){const p=products.find(p=>p.id===$('#product-detail').dataset.current);const im=$('.main-image');im.src=p.gallery[+g.dataset.gallery];im.alt=p.name+'产品详情第'+(+g.dataset.gallery+1)+'张';im.classList.remove('zoomed');document.querySelectorAll('[data-gallery]').forEach(b=>{b.classList.toggle('selected',b===g);b.setAttribute('aria-pressed',b===g)})}const l=e.target.closest('[data-spec-link]');if(l){productDialog.close();$('#spec-series').value=l.dataset.specLink;specShown=12;renderSpecs();$('#specifications').scrollIntoView({behavior:'smooth'})}if(e.target.closest('[data-open-list]')){renderSelection();listDialog.showModal()}const remove=e.target.closest('[data-remove]');if(remove)toggleSaved(remove.dataset.remove)});
-$('#product-detail').addEventListener('click',e=>{if(e.target.classList.contains('main-image'))e.target.classList.toggle('zoomed')});
-$('#product-detail').addEventListener('keydown',e=>{if(e.target.classList.contains('main-image')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.target.classList.toggle('zoomed')}});
-$('[data-close-product]').addEventListener('click',()=>productDialog.close());$('[data-close-list]').addEventListener('click',()=>listDialog.close());
-for(const d of [productDialog,listDialog])d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}});
-const names=[...new Set(specs.map(s=>s.series))];for(const name of names){const o=document.createElement('option');o.value=name;o.textContent=name;$('#spec-series').append(o)}
-function filteredSpecs(){const name=$('#spec-series').value,q=$('#spec-search').value.trim().toLowerCase();return specs.filter(s=>(!name||s.series===name)&&(!q||(s.name+s.series+s.color+s.size).toLowerCase().includes(q)))}
-function renderSpecs(){const rows=filteredSpecs();$('#spec-body').innerHTML=rows.length?rows.slice(0,specShown).map(s=>`<tr><td>${escapeHtml(s.series)}${s.color?' · '+s.color:''}</td><td>${escapeHtml(s.name)}</td><td>${s.size?escapeHtml(s.size):'详见产品图 / 待确认'}</td></tr>`).join(''):'<tr><td colspan="3">没有找到相关规格，请尝试其他器型或系列。</td></tr>';$('#spec-status').textContent=`共 ${rows.length} 项规格 · 当前展示 ${Math.min(rows.length,specShown)} 项`;$('#spec-more').hidden=specShown>=rows.length}
-$('#spec-series').addEventListener('change',()=>{specShown=12;renderSpecs()});$('#spec-search').addEventListener('input',()=>{specShown=12;renderSpecs()});$('#spec-more').addEventListener('click',()=>{specShown+=20;renderSpecs()});
-function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function csvCell(x){const s=String(x);return '"'+(/^[=+@\-]/.test(s)?"'":'')+s.replace(/"/g,'""')+'"'}
-$('#download-specs').addEventListener('click',()=>{const rows=filteredSpecs();if(!rows.length){toast('当前没有可下载的规格');return}const lines=[['系列','颜色','器型/规格','尺寸'],...rows.map(s=>[s.series,s.color,s.name,s.size||'待确认'])];download('利尼恩产品规格-'+($('#spec-series').value||'全部')+'.csv','\uFEFF'+lines.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8');toast('规格表已下载')});
-function renderSelection(){$('#selection-items').innerHTML=saved.length?saved.map(id=>{const p=products.find(p=>p.id===id);return `<div class="selected-item"><img src="${p.image}" alt="${escapeHtml(p.name)}"><div><h3>${escapeHtml(p.name)}</h3><p>${p.category} / 陶瓷 / 釉下彩</p></div><button class="remove-item" data-remove="${p.id}" aria-label="移除${escapeHtml(p.name)}">移除</button></div>`}).join(''):'<div class="empty-state">还没有收藏的系列。<br>在产品系列旁点击「＋」，收集你的餐桌灵感。</div>';$('#download-list').disabled=!saved.length;$('#clear-list').disabled=!saved.length}
-try{$('#selection-note').value=localStorage.getItem('linien-note')||''}catch{}
-$('#selection-note').addEventListener('input',e=>{try{localStorage.setItem('linien-note',e.target.value)}catch{}});
-$('#clear-list').addEventListener('click',()=>{saved=[];persist();renderSelection();toast('选品清单已清空')});
-$('#download-list').addEventListener('click',()=>{const lines=['利尼恩 LINIEN · 产品选品清单','生成日期：'+new Date().toLocaleDateString('zh-CN'),''];for(const [i,id] of saved.entries()){const p=products.find(p=>p.id===id);lines.push(`${i+1}. ${p.name} / ${p.category}`,p.description,'材质：陶瓷；工艺：釉下彩；烧制温度：1250°C','')}lines.push('补充需求：',$('#selection-note').value.trim()||'未填写','','潮州市潮安区利尼恩科技有限公司');download('利尼恩选品清单.txt','\uFEFF'+lines.join('\r\n'),'text/plain;charset=utf-8');toast('选品清单已下载')});
-$('.menu-toggle').addEventListener('click',()=>{const open=$('#nav').classList.toggle('open');$('.menu-toggle').setAttribute('aria-expanded',open);$('.menu-toggle').setAttribute('aria-label',open?'关闭导航':'打开导航')});
-$('#nav').addEventListener('click',e=>{if(e.target.closest('a')){$('#nav').classList.remove('open');$('.menu-toggle').setAttribute('aria-expanded','false')}});
-renderProducts();renderSpecs();updateSaved();
+const {products} = window.LINIEN;
+const $ = selector => document.querySelector(selector);
+const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+let saved = [];
+try {
+  const value = JSON.parse(localStorage.getItem('linien-selection') || '[]');
+  if (Array.isArray(value)) saved = value.filter(id => products.some(product => product.id === id));
+} catch {}
+let filter = '全部系列', query = '', shown = 9, toastTimer;
+const productDialog = $('#product-dialog'), listDialog = $('#list-dialog');
+
+function toast(message) {
+  $('#toast').textContent = message;
+  $('#toast').classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 2300);
+}
+function updateSaved() {
+  $('#list-count').textContent = saved.length;
+  document.querySelectorAll('[data-save]').forEach(button => {
+    const product = products.find(p => p.id === button.dataset.save);
+    const selected = saved.includes(product.id);
+    button.setAttribute('aria-pressed', selected);
+    button.setAttribute('aria-label', (selected ? '取消收藏' : '收藏') + product.name);
+    button.textContent = button.classList.contains('save-button') ? (selected ? '✓' : '＋') : (selected ? '已加入选品清单 ✓' : '加入我的选品 ＋');
+  });
+}
+function persist() {
+  try { localStorage.setItem('linien-selection', JSON.stringify(saved)); } catch {}
+  updateSaved();
+}
+function toggleSaved(id) {
+  if (!products.some(p => p.id === id)) return;
+  if (saved.includes(id)) {
+    saved = saved.filter(value => value !== id);
+    toast('已从选品清单移除');
+  } else {
+    saved.push(id);
+    toast('已加入选品清单');
+  }
+  persist();
+  if (listDialog.open) renderSelection();
+}
+function renderProducts() {
+  const list = products.filter(p => (filter === '全部系列' || p.category === filter) && (!query || (p.name + p.description + p.category).toLowerCase().includes(query.toLowerCase())));
+  $('#product-grid').innerHTML = list.length ? list.slice(0, shown).map(p => `
+    <article class="product-card">
+      <button class="product-image" data-product="${p.id}" aria-label="查看${escapeHtml(p.name)}系列">
+        <img src="${p.image}" alt="${escapeHtml(p.name)}系列陶瓷餐具" loading="lazy" width="900" height="900">
+        <span class="product-index" aria-hidden="true">${String(products.indexOf(p) + 1).padStart(2,'0')}</span>
+        ${p.isNew ? '<span class="new-badge">NEW · 新品</span>' : ''}
+        <span class="view-label">探索系列 <span>↗</span></span>
+      </button>
+      <div class="product-caption"><div><small>${escapeHtml(p.category)}</small><button class="product-name" data-product="${p.id}">${escapeHtml(p.name)}</button></div><button class="save-button" data-save="${p.id}" aria-pressed="false" aria-label="收藏${escapeHtml(p.name)}">＋</button></div>
+      <p>${escapeHtml(p.description)}</p>
+    </article>`).join('') : '<div class="empty-state">没有找到相关系列，请尝试其他名称或风格。</div>';
+  $('#catalog-status').textContent = `${filter} · ${list.length} 个系列${list.length > shown ? ' / 当前展示 ' + shown + ' 个' : ''}`;
+  $('#load-more').hidden = shown >= list.length;
+  updateSaved();
+}
+document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
+  filter = button.dataset.filter;
+  shown = 9;
+  document.querySelectorAll('[data-filter]').forEach(item => {
+    item.classList.toggle('active', item === button);
+    item.setAttribute('aria-pressed', item === button);
+  });
+  renderProducts();
+}));
+$('#product-search').addEventListener('input', event => { query = event.target.value.trim(); shown = 9; renderProducts(); });
+$('#load-more').addEventListener('click', () => { shown += 9; renderProducts(); });
+$('#total-collections').textContent = products.length;
+
+function openProduct(id) {
+  const product = products.find(p => p.id === id);
+  if (!product) return;
+  $('#product-detail').innerHTML = `
+    <div class="detail-main"><div class="detail-gallery">
+      <img class="main-image" src="${product.image}" alt="${escapeHtml(product.name)}系列主图" width="900" height="900" tabindex="0" role="button" aria-label="放大产品图片">
+      <div class="gallery-caption"><span>产品实拍与细节</span><span>${product.gallery.length} 张图片 · 点击主图放大</span></div>
+      <div class="thumbnails" aria-label="产品图片列表">${product.gallery.map((image, index) => `<button data-gallery="${index}" class="${index === 0 ? 'selected' : ''}" aria-label="查看第${index + 1}张图片" aria-pressed="${index === 0}"><img src="${image}" alt="${escapeHtml(product.name)}产品图${index + 1}" loading="lazy"></button>`).join('')}</div>
+    </div><div class="detail-copy">
+      <p class="eyebrow">${escapeHtml(product.category)} / LINIEN${product.isNew ? ' · NEW' : ''}</p>
+      <h2 id="detail-title">${escapeHtml(product.name)}</h2><p class="detail-description">${escapeHtml(product.description)}</p>
+      <dl class="detail-facts"><div><dt>材质</dt><dd>陶瓷</dd></div><div><dt>工艺</dt><dd>${escapeHtml(product.craft)}</dd></div><div><dt>烧制</dt><dd>${escapeHtml(product.temperature)}</dd></div></dl>
+      ${product.origin ? `<p class="detail-origin">产地 · ${escapeHtml(product.origin)}</p>` : ''}
+      <p class="detail-tip">让喜欢的器物，走进每一天。可浏览产品实拍与细节图片，具体使用方式请以各产品说明为准。</p>
+      <button class="button dark" data-save="${product.id}" aria-pressed="false">加入我的选品 ＋</button>
+    </div></div>`;
+  $('#product-detail').dataset.current = id;
+  updateSaved();
+  productDialog.showModal();
+}
+document.addEventListener('click', event => {
+  const productButton = event.target.closest('[data-product]');
+  if (productButton) openProduct(productButton.dataset.product);
+  const saveButton = event.target.closest('[data-save]');
+  if (saveButton) toggleSaved(saveButton.dataset.save);
+  const galleryButton = event.target.closest('[data-gallery]');
+  if (galleryButton) {
+    const product = products.find(p => p.id === $('#product-detail').dataset.current);
+    const image = $('.main-image');
+    image.src = product.gallery[+galleryButton.dataset.gallery];
+    image.alt = product.name + '产品详情第' + (+galleryButton.dataset.gallery + 1) + '张';
+    image.classList.remove('zoomed');
+    document.querySelectorAll('[data-gallery]').forEach(button => {
+      button.classList.toggle('selected', button === galleryButton);
+      button.setAttribute('aria-pressed', button === galleryButton);
+    });
+  }
+  if (event.target.closest('[data-open-list]')) { renderSelection(); listDialog.showModal(); }
+  const removeButton = event.target.closest('[data-remove]');
+  if (removeButton) toggleSaved(removeButton.dataset.remove);
+});
+$('#product-detail').addEventListener('click', event => { if (event.target.classList.contains('main-image')) event.target.classList.toggle('zoomed'); });
+$('#product-detail').addEventListener('keydown', event => {
+  if (event.target.classList.contains('main-image') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.target.classList.toggle('zoomed'); }
+});
+$('[data-close-product]').addEventListener('click', () => productDialog.close());
+$('[data-close-list]').addEventListener('click', () => listDialog.close());
+for (const dialog of [productDialog, listDialog]) dialog.addEventListener('click', event => {
+  if (event.target === dialog) {
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+  }
+});
+function download(name, content, type) {
+  const url = URL.createObjectURL(new Blob([content], {type}));
+  const link = document.createElement('a');
+  link.href = url; link.download = name; document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function renderSelection() {
+  $('#selection-items').innerHTML = saved.length ? saved.map(id => {
+    const p = products.find(product => product.id === id);
+    return `<div class="selected-item"><img src="${p.image}" alt="${escapeHtml(p.name)}"><div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.category)} / 陶瓷 / ${escapeHtml(p.craft)}</p></div><button class="remove-item" data-remove="${p.id}" aria-label="移除${escapeHtml(p.name)}">移除</button></div>`;
+  }).join('') : '<div class="empty-state">还没有收藏的系列。<br>在产品系列旁点击「＋」，收集你的餐桌灵感。</div>';
+  $('#download-list').disabled = !saved.length;
+  $('#clear-list').disabled = !saved.length;
+}
+try { $('#selection-note').value = localStorage.getItem('linien-note') || ''; } catch {}
+$('#selection-note').addEventListener('input', event => { try { localStorage.setItem('linien-note', event.target.value); } catch {} });
+$('#clear-list').addEventListener('click', () => { saved = []; persist(); renderSelection(); toast('选品清单已清空'); });
+$('#download-list').addEventListener('click', () => {
+  const lines = ['利尼恩 LINIEN · 产品选品清单', '生成日期：' + new Date().toLocaleDateString('zh-CN'), ''];
+  for (const [index, id] of saved.entries()) {
+    const p = products.find(product => product.id === id);
+    lines.push(`${index + 1}. ${p.name} / ${p.category}`, p.description, `材质：陶瓷；工艺：${p.craft}；烧制：${p.temperature}`, '');
+  }
+  lines.push('补充需求：', $('#selection-note').value.trim() || '未填写', '', '潮州市潮安区利尼恩科技有限公司');
+  download('利尼恩选品清单.txt', '\uFEFF' + lines.join('\r\n'), 'text/plain;charset=utf-8');
+  toast('选品清单已下载');
+});
+$('.menu-toggle').addEventListener('click', () => {
+  const open = $('#nav').classList.toggle('open');
+  $('.menu-toggle').setAttribute('aria-expanded', open);
+  $('.menu-toggle').setAttribute('aria-label', open ? '关闭导航' : '打开导航');
+});
+$('#nav').addEventListener('click', event => {
+  if (event.target.closest('a')) { $('#nav').classList.remove('open'); $('.menu-toggle').setAttribute('aria-expanded', 'false'); $('.menu-toggle').setAttribute('aria-label', '打开导航'); }
+});
+renderProducts();
+updateSaved();
