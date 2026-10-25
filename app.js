@@ -23,7 +23,7 @@ function updateSaved() {
     const selected = saved.includes(product.id);
     button.setAttribute('aria-pressed', selected);
     button.setAttribute('aria-label', (selected ? '取消收藏' : '收藏') + product.name);
-    button.textContent = button.classList.contains('save-button') ? (selected ? '✓' : '＋') : (selected ? '已加入选品清单 ✓' : '加入我的选品 ＋');
+    button.textContent = selected ? '已加入选品清单' : '加入我的选品';
   });
 }
 function persist() {
@@ -50,9 +50,9 @@ function renderProducts() {
         <img src="${p.image}" alt="${escapeHtml(p.name)}系列陶瓷餐具" loading="lazy" width="900" height="900">
         <span class="product-index" aria-hidden="true">${String(products.indexOf(p) + 1).padStart(2,'0')}</span>
         ${p.isNew ? '<span class="new-badge">NEW · 新品</span>' : ''}
-        <span class="view-label">探索系列 <span>↗</span></span>
+        <span class="view-label">探索系列</span>
       </button>
-      <div class="product-caption"><div><small>${escapeHtml(p.category)}</small><button class="product-name" data-product="${p.id}">${escapeHtml(p.name)}</button></div><button class="save-button" data-save="${p.id}" aria-pressed="false" aria-label="收藏${escapeHtml(p.name)}">＋</button></div>
+      <div class="product-caption"><div><small>${escapeHtml(p.category)}</small><button class="product-name" data-product="${p.id}">${escapeHtml(p.name)}</button></div></div>
       <p>${escapeHtml(p.description)}</p>
     </article>`).join('') : '<div class="empty-state">没有找到相关系列，请尝试其他名称或风格。</div>';
   $('#catalog-status').textContent = `${filter} · ${list.length} 个系列${list.length > shown ? ' / 当前展示 ' + shown + ' 个' : ''}`;
@@ -86,7 +86,7 @@ function openProduct(id) {
       <dl class="detail-facts"><div><dt>材质</dt><dd>陶瓷</dd></div><div><dt>工艺</dt><dd>${escapeHtml(product.craft)}</dd></div><div><dt>烧制</dt><dd>${escapeHtml(product.temperature)}</dd></div></dl>
       ${product.origin ? `<p class="detail-origin">产地 · ${escapeHtml(product.origin)}</p>` : ''}
       <p class="detail-tip">让喜欢的器物，走进每一天。可浏览产品实拍与细节图片，具体使用方式请以各产品说明为准。</p>
-      <button class="button dark" data-save="${product.id}" aria-pressed="false">加入我的选品 ＋</button>
+      <button class="button dark" data-save="${product.id}" aria-pressed="false">加入我的选品</button>
     </div></div>`;
   $('#product-detail').dataset.current = id;
   updateSaved();
@@ -135,7 +135,7 @@ function renderSelection() {
   $('#selection-items').innerHTML = saved.length ? saved.map(id => {
     const p = products.find(product => product.id === id);
     return `<div class="selected-item"><img src="${p.image}" alt="${escapeHtml(p.name)}"><div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.category)} / 陶瓷 / ${escapeHtml(p.craft)}</p></div><button class="remove-item" data-remove="${p.id}" aria-label="移除${escapeHtml(p.name)}">移除</button></div>`;
-  }).join('') : '<div class="empty-state">还没有收藏的系列。<br>在产品系列旁点击「＋」，收集你的餐桌灵感。</div>';
+  }).join('') : '<div class="empty-state">还没有收藏的系列。<br>打开喜欢的系列，点击「加入我的选品」，收集你的餐桌灵感。</div>';
   $('#download-list').disabled = !saved.length;
   $('#clear-list').disabled = !saved.length;
 }
